@@ -1,8 +1,11 @@
 import os
 import json
 import requests
+import nltk
 
 from argparse import ArgumentParser
+
+nltk.download('punkt')
 
 STEVESIE_API_URL_TEMPLATE = 'https://stevesie.com/api/v1/workers/{worker_id}/collection-results'
 STEVESIE_API_REQUEST_LIMIT = 100
@@ -42,17 +45,39 @@ def fetch_nextdoor_stories(token, worker_id, task_collection_id, stevesie_cache_
                 json.dump(all_results, f)
     return all_results
 
-def parse_story(story):
+def word_counts_for_story(story):
+    word_counts = {}
     subject = story.get('subject')
-    comments = [comment['body'] for comment in story.get('comments', []) if comment.get('body')]
+    sentences = [comment['body'] for comment in story.get('comments', []) if comment.get('body')]
 
-    print(subject)
-    print(comments)
+    if (subject):
+        sentences.append(subject)
 
-def fetch_and_parse(token, worker_id, task_collection_id, stevesie_cache_filename=None):
+    for sentence in sentences:
+        for token in [t.lower() for t in nltk.word_tokenize(sentence)]:
+            word_counts[token] = word_counts.get(token, 0) + 1
+
+    return word_counts
+
+def fetch_and_parse(token, worker_id, task_collection_id, stevesie_cache_filename=None, output_filename=None):
     nextdoor_results = fetch_nextdoor_stories(token, worker_id, task_collection_id, stevesie_cache_filename)
-    parsed = [parse_story(result['object']) for result in nextdoor_results]
-    print(parsed)
+    all_word_counts = {}
+    stories_word_counts = [word_counts_for_story(result['object']) for result in nextdoor_results]
+    for word_counts in stories_word_counts:
+        for word, count in word_counts.items():
+            all_word_counts[word] = all_word_counts.get(word, 0) + count
+
+    results = {
+        'story_count': len(stories_word_counts),
+        'word_counts': all_word_counts
+    }
+
+    if output_filename:
+        with open(output_filename, 'w') as f:
+            json.dump(results, f)
+
+    print('Story Word Count Summary:')
+    print(results)
 
 def arg_parser():
     parser = ArgumentParser()
@@ -61,6 +86,7 @@ def arg_parser():
     parser.add_argument('-c', '--task_collection_id', type=str)
 
     parser.add_argument('-s', '--stevesie_cache_filename', type=str, required=False)
+    parser.add_argument('-o', '--output_filename', type=str, required=False)
     return parser
 
 def run_command_line():
