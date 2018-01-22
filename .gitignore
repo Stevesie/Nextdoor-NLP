@@ -2,3 +2,6 @@
 /include
 /lib
 /pip-selfcheck.json
+
+/dist
+*.egg-info

@@ -8,6 +8,12 @@ Install virtualenv:
 
 `pip install virtualenv`
 
-`virtualenv .`
+Create and activate for this project (do this one directory level up):
 
-`pip install -r requirements.txt`
+`virtualenv nextdoor_nlp`
+
+`source nextdoor_nlp/bin/activate`
+
+`cd nextdoor_nlp`
+
+`python setup.py install`
